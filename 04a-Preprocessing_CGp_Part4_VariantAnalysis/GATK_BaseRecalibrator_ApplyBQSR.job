@@ -1,0 +1,22 @@
+#!/bin/bash
+#SBATCH --partition=htc
+#SBATCH --cluster=htc
+#SBATCH --job-name=ApplyBQSR
+#SBATCH --time=10:00:00
+#SBATCH --output=output/PrintReads_%A_%a.out
+#SBATCH --error=output/PrintReads_%A_%a.err  ###with jobID (%A) and elementID (%a) variables 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10 # Request that ncpus be allocated per process.
+#SBATCH --mem=38GB
+#SBATCH --array=0-10
+
+module load  gatk/4.5.0.0
+
+Filenames=($(cat input/samples.5cols.txt | cut -f4))
+
+sample=${Filenames[${SLURM_ARRAY_TASK_ID}]}
+
+echo $sample
+
+#BAM file generated  with double-stranded UMI-based deduplication (duplex)
+/software/rhel9/spack/install/linux-rhel9-x86_64/gcc-11.4.1/gatk-4.5.0.0-sl3qs3nlbwenhg3tjopzcj7oufvwgjaa/bin/gatk ApplyBQSR -R input/Homo_sapiens_assembly38.fasta -I input/${sample}_ds_consensus_filtered_clipped.bam --bqsr-recal-file output/${sample}.recal_data.table -O output/${sample}.BQSR.bam

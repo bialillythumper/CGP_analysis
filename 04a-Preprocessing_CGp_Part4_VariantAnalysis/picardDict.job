@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --partition=htc
+#SBATCH --cluster=htc
+#SBATCH --job-name=picardDict
+#SBATCH --time=10:00:00
+#SBATCH --output=output/picardMarkDict_%A_%a.out
+#SBATCH --error=output/picardMarkDict_%A_%a.err  ###with jobID (%A) and elementID (%a) variables 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10 # Request that ncpus be allocated per process.
+#SBATCH --mem=38GB
+#SBATCH --constraint=intel
+####SBATCH --array=0-10
+
+module load picard/3.0.0
+
+picard="/software/rhel9/spack/install/linux-rhel9-x86_64/gcc-11.4.1/picard-3.0.0-g2o3nwx26lprsearetmkna2gahb4drn6/bin/picard.jar"
+
+
+
+java -Xmx32G  -jar ${picard} CreateSequenceDictionary R=input/Homo_sapiens_assembly38.fasta O=input/Homo_sapiens_assembly38.dict 

@@ -1,0 +1,27 @@
+#!/bin/bash
+#SBATCH --partition=htc
+#SBATCH --cluster=htc
+#SBATCH --job-name=insertSize
+#SBATCH --time=10:00:00
+#SBATCH --output=output/picard_insertSize_%A_%a.out
+#SBATCH --error=output/picard_insertSize_%A_%a.err  ###with jobID (%A) and elementID (%a) variables 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10 # Request that ncpus be allocated per process.
+#SBATCH --mem=38GB
+#SBATCH --array=0-10 # 1-10  #0-10  # i first run only 0 which is Female_control  try one sample first
+
+
+
+module load r/4.5.0
+module load picard/3.0.0
+
+picard="/software/rhel9/spack/install/linux-rhel9-x86_64/gcc-11.4.1/picard-3.0.0-g2o3nwx26lprsearetmkna2gahb4drn6/bin/picard.jar"
+
+
+Filenames=($(cat input/samples.5cols.txt | cut -f4))
+sample=${Filenames[${SLURM_ARRAY_TASK_ID}]}
+
+echo $sample
+
+# Collect insert size
+java -Xmx32G  -jar ${picard} CollectInsertSizeMetrics INPUT=output/${sample}.BQSR.bam OUTPUT=output/${sample}_ds_insert_metrics.tsv HISTOGRAM_FILE=output/${sample}_ds_insert_histo.pdf HISTOGRAM_WIDTH=400 MINIMUM_PCT=0.01

@@ -1,0 +1,22 @@
+#!/bin/bash
+#SBATCH --partition=htc
+#SBATCH --cluster=htc
+#SBATCH --job-name=Indexbam
+#SBATCH --time=10:00:00
+#SBATCH --output=log/samtools_%A_%a.out
+#SBATCH --error=log/samtools_%A_%a.err  ###with jobID (%A) and elementID (%a) variables 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10 # Request that ncpus be allocated per process.
+#SBATCH --mem=38GB
+#SBATCH --array=0-11  #0-11  # i first run only 0 which is Female_control  try one sample first
+
+module load samtools/1.22.1
+
+
+Filenames=($(cat input/samples.5cols.txt | cut -f4))
+sample=${Filenames[${SLURM_ARRAY_TASK_ID}]}
+
+echo $sample
+samtools sort -@ 10 -o output/${sample}.BQSR.sorted.bam output/${sample}.BQSR.bam
+samtools index output/${sample}.BQSR.sorted.bam
+

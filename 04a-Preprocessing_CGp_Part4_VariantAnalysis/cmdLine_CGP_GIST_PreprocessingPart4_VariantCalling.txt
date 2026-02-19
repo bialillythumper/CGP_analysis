@@ -1,0 +1,345 @@
+#17th Feb 2026
+in this folder I will use variant calling 
+
+I will first start with Mutect2 and then Haplotype caller
+
+
+The following output files are suitable for variant analysis: 
+1) BAM file generated in part 2 with single-stranded UMI-based deduplication; 
+2) BAM file generated  with double-stranded UMI-based deduplication (duplex);
+
+
+
+
+
+# create folders
+
+mkdir input output log
+
+
+# copy metadata file
+
+
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/01-metaData/samples.5cols.txt input/
+
+
+
+
+# Making symbolic links for input data.
+# while working in shell must first run IFS=$'\n'
+IFS=$'\n'
+
+
+
+# i will first start with BAM file generated  with double-stranded UMI-based deduplication (duplex);
+
+
+for i in $(cat input/samples.5cols.txt); do FILE_R1=$(echo "$i" | cut -f2); SAMPLE=$(echo "$i" | cut -f4);  ln -s /ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/04a-Preprocessing_CGp_Part3/output/${SAMPLE}_ds_consensus_filtered_clipped.bam input/${SAMPLE}_ds_consensus_filtered_clipped.bam ; done
+
+
+
+
+# befor calling variants we will do Base quality recalibration
+#we previously downloaded here /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling
+
+"As announced in the GATK v3.6 highlights, variant calling workflows that use HaplotypeCaller or MuTect2 now omit indel realignment."
+recommended reading
+https://github.com/broadinstitute/gatk-docs/blob/master/blog-2012-to-2019/2016-06-21-Changing_workflows_around_calling_SNPs_and_indels.md?id=7847
+
+# First perform Base Quality Score Recalibration (BQSR) 
+https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR
+
+https://gatk.broadinstitute.org/hc/en-us/articles/360035890531-Base-Quality-Score-Recalibration-BQSR
+
+https://gatk.broadinstitute.org/hc/en-us/articles/360036898312-BaseRecalibrator
+
+
+# copy reference genome fasta or make symbolic link
+
+ln -s /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/04-Alignment/Indexing/input/Homo_sapiens_assembly38.fasta input/Homo_sapiens_assembly38.fasta
+ln -s /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/04-Alignment/Indexing/input/Homo_sapiens_assembly38.fasta.fai input/Homo_sapiens_assembly38.fasta.fai
+
+# create reference dict file using picard
+I have already created in /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling
+
+But i will copy job script
+
+
+ln -s /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/input/Homo_sapiens_assembly38.dict input/
+
+
+
+# i am not running script but just saving
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/picardDict.job .
+
+vim picardDict.job 
+
+# download know snp dbSNP and index from GATK resouce bundle
+wget https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf
+wget https://storage.googleapis.com/genomics-public-data/resources/broad/hg38/v0/Homo_sapiens_assembly38.dbsnp138.vcf.idx
+
+# i will not download just make symbolic link
+
+ln -s /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/input/Homo_sapiens_assembly38.dbsnp138.vcf input/
+
+ln -s /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/input/Homo_sapiens_assembly38.dbsnp138.vcf.idx input/
+
+
+
+# # Run base recalibration
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/GATK_BaseRecalibrator.job .
+
+# check module
+module load  gatk/4.5.0.0
+which gatk
+/software/rhel9/spack/install/linux-rhel9-x86_64/gcc-11.4.1/gatk-4.5.0.0-sl3qs3nlbwenhg3tjopzcj7oufvwgjaa/bin/gatk
+
+# copy Base recalibrator script and edit
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/GATK_BaseRecalibrator.job .
+
+
+
+# Run job : Base quality recalibration"
+
+# 1. build the model
+sbatch GATK_BaseRecalibrator.job 
+Submitted batch job 8033271 on cluster htc
+
+
+# check job status
+squeue -M htc -u hua60
+
+# 2. Apply the model to adjust the base quality scores
+#Apply base quality score recalibration
+
+# copy job script
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/WES_V202504/06-VariantCalling/GATK_BaseRecalibrator_ApplyBQSR.job .
+
+
+sbatch GATK_BaseRecalibrator_ApplyBQSR.job
+Submitted batch job 8033496 on cluster htc
+
+
+
+Collect Alignment & Insert Size Metrics
+
+# first Insert Size Metrics
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/04a-Preprocessing_CGp_Part5/Picard_step24d.job .
+
+
+
+sbatch Picard_step24d.job 
+Submitted batch job 8033539 on cluster htc
+
+
+
+
+#Download Mutect2 supporting files
+
+# gnomAD
+wget https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/somatic-hg38/af-only-gnomad.hg38.vcf.gz ~/Desktop/demo/supporting_files/mutect2_supporting_files
+wget https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/somatic-hg38/af-only-gnomad.hg38.vcf.gz.tbi ~/Desktop/demo/supporting_files/mutect2_supporting_files
+
+
+
+mv af-only-gnomad.hg38.vcf.gz input/
+mv af-only-gnomad.hg38.vcf.gz.tbi input/
+
+
+# PoN
+wget https://storage.googleapis.com/gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz ~/Desktop/demo/supporting_files/mutect2_supporting_files
+wget https://storage.googleapis.com/gatk-best-practices/somatic-hg38/1000g_pon.hg38.vcf.gz.tbi ~/Desktop/demo/supporting_files/mutect2_supporting_files
+
+
+
+mv 1000g_pon.hg38.vcf.gz input/
+mv 1000g_pon.hg38.vcf.gz.tbi  input/
+
+
+
+# copy interval list
+bed file for refionis downloaded from Agilent_sureDesign
+login to  SureDesign
+Login hua60@pitt.edu
+Password loui6***0***(*
+
+I registered my work group huma_asif_lab
+Agilentsure design 
+Find design
+Sure select cancer CGP
+Agilent catalog
+Sureselect cancer CGP DNA assay
+
+
+CGP design id = A3416642 so file has this in start
+
+# brigette recommended using A3416642_Covered.bed
+
+
+
+# files are saved in /ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/bedFilesDownloadedFrom_Agilent_sureDesign
+
+
+
+cp /ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/bedFilesDownloadedFrom_Agilent_sureDesign/A3416642_Covered.bed input/
+
+
+Call Somatic Variants - Mutect2 (https://gatk.broadinstitute.org/hc/en-us/articles/360035531132--How-to-Call-somatic-mutations-using-GATK4-Mutect2)
+
+
+# GATK best practices
+https://gatk.broadinstitute.org/hc/en-us/sections/360007226651-Best-Practices-Workflows
+
+
+
+
+https://gatk.broadinstitute.org/hc/en-us/articles/360050722212-FAQ-for-Mutect2
+
+  How does Mutect2 determine whether a given call is somatic or germline, if it's not in the included Resource file?
+
+The germline resource is used to get the frequency of a variant allele in the population, thereby providing the prior probability that the sample carries the allele in the germline. This prior is one ingredient in a statistical model for germline variation. When an allele is missing from the germline resource, Mutect2 uses the same model with a very small imputed allele frequency.
+
+In Mutect2 (Tumor-only mode), is it possible to distinguish between likely germline and somatic mutations, while keeping both?
+
+The tool does its best, but this isessentially impossible. Any genome will have several tens of thousands of germline variants so rare that they don’t appear in gnomAD, and there is hardly any way to distinguish these from somatic variants. The exception is if, due to low purity or other reasons, most somatic mutations in a sample have low allele frequencies. In such cases, FilterMutectCalls can distinguish them from germline hets.
+
+How is the Mutect2 filter different in tumor-only mode, versus in matched-normal mode? What does it do differently in each case?
+
+In tumor-normal mode, Mutect2 detects germline variants using (1) the population allele frequency from the germline resource as a prior, (2) the normal reads, and (3) the allele fraction in the tumor (allele fractions near ½ are suggestive of germline hets). In tumor-only mode, the evidence from normal reads is missing, but it’s the same model. Additionally, in tumor-only mode, the powerful normal artifact filter is not available.
+
+#################extremely important point ############
+Mutect2 multi-sample mode is designed for samples from the same patient (e.g., primary tumor and metastasis). It is not recommended for pooling samples from different patients into a single run.
+reference : https://gatk.broadinstitute.org/hc/en-us/community/posts/360062528691-mutect2-multi-sample
+
+
+# read this 
+https://gatk.broadinstitute.org/hc/en-us/articles/360035890491-Somatic-calling-is-NOT-simply-a-difference-between-two-callsets
+
+
+# make job script
+cp GATK_BaseRecalibrator.job  Mutect2.job
+
+# reading for Mutect2
+https://gatk.broadinstitute.org/hc/en-us/community/topics
+
+
+# script help
+https://gatk.broadinstitute.org/hc/en-us/articles/360037593851-Mutect2
+
+
+--f1r2-tar-gz
+Output orientation bias data (used later in filtering
+
+
+# index bam file
+
+sbatch samtools.job 
+Submitted batch job 8035582 on cluster htc
+
+sbatch samtools.job 
+Submitted batch job 8035595 on cluster htc
+
+
+sbatch Mutect2.job 
+Submitted batch job 8035694 on cluster htc
+
+Filter for confident calls
+
+STEP :Estimate cross-sample contamination
+ GetPileupSummaries
+# Summarizes counts of reads that support reference, alternate and other alleles for given sites. Results are used with CalculateContamination.
+
+contamination estimation works best using:
+
+✔ common population SNPs
+✔ biallelic sites
+✔ high AF variants (~0.01–0.5)
+
+sbatch Mutect2.job 
+Submitted batch job 8037999 on cluster htc
+
+
+ls output/*_getpileupsummaries.table
+
+
+# Calculate contamination
+
+# Calculate tumor-only contamination calculation.
+
+sbatch Mutect2.job 
+Submitted batch job 8038069 on cluster htc
+
+
+check few
+cat output/Female_Control_contamination.table
+sample	contamination	error
+Female_Control	0.0	4.76837158203125E-7
+
+
+2%: Considered a "clean" or "low contamination" sample.
+cat output/PHS16-39359-5H_contamination.table
+sample	contamination	error
+PHS16-39359-5H	0.016474005216360176	0.002197179453640622
+
+Finally, pass the learned read orientation model to FilterMutectCallswith the -ob-priors argument:
+
+STEP: Estimate read orientation artifacts
+
+sbatch Mutect2.job 
+Submitted batch job 8038131 on cluster htc
+
+Filter Variants Called By Mutect2
+
+
+sbatch Mutect2.job 
+Submitted batch job 8038190 on cluster htc
+
+we have performed
+Mutect2
+
+LearnReadOrientationModel
+
+GetPileupSummaries
+
+CalculateContamination
+
+
+
+#check pass fail
+module load bcftools
+bcftools view -f PASS output/Female_Control_somatic_variants_filtered_mutect2.vcf | wc -l
+bcftools view -f .,FAIL output/Female_Control_somatic_variants_filtered_mutect2.vcf | wc -l
+
+Annotate Variants - 
+
+
+#reading
+https://gatk.broadinstitute.org/hc/en-us/articles/360047232772--Notebook-Intro-to-using-Mutect2-for-somatic-data
+
+# try funcotator for annotation
+https://gatk.broadinstitute.org/hc/en-us/articles/360037224432-Funcotator
+
+
+# download datasources for functator
+
+sbatch Mutect2.job 
+Submitted batch job 8041013 on cluster htc
+
+
+https://gatk.broadinstitute.org/hc/en-us/articles/360035889931-Funcotator-Information-and-Tutorial
+
+server giving issues so i downloaded on mac and then uploaded
+wget  ftp://gsapubftp-anonymous@ftp.broadinstitute.org/bundle/funcotator/funcotator_dataSources.v1.8.hg38.20230908s.tar.gz
+mv funcotator_dataSources.v1.8.hg38.20230908s.tar.gz  input/
+
+tar -xvf funcotator_dataSources.v1.8.hg38.20230908s.tar.gz 
+
+
+ls input/funcotator_dataSources.v1.8.hg38.20230908s.tar.gz
+
+
+cd input
+
+tar -xvf gnomAD_genome.tar.gz 
+tar -xvf gnomAD_exome.tar.gz
+
