@@ -1,0 +1,34 @@
+#!/bin/bash
+#SBATCH --partition=htc
+#SBATCH --cluster=htc
+#SBATCH --job-name=Annovar
+#SBATCH --time=10:00:00
+#SBATCH --output=output/Annovar_%A_%a.out
+#SBATCH --error=output/Annovar_%A_%a.err  ###with jobID (%A) and elementID (%a) variables 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=10 # Request that ncpus be allocated per process.
+#SBATCH --mem=38GB
+####SBATCH --array=0-10
+
+
+#module load annovar/2018Apr16
+
+
+#Gene based annotation
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar knownGene humandb/
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar refGene  humandb/
+# filter based annotation
+#For frequency of variants in whole-exome data:gnomad41_exome: allele frequency in gnomAD v4. database whole-exome sequence data on multiple populations.
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar exac03 humandb/ 
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar gnomad_genome humandb/
+# disease specific variants
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar icgc21  humandb/
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar nci60  humandb/
+#for functional prediction
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar dbnsfp30a humandb/
+# pathogenicity of missense variants (amino acid–changing mutations)
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar revel humandb/
+#/ihome/crc/install/annovar/annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar clinvar_20240917 humandb/
+
+# 23rd Feb 2026: Annovar is somore available as module so i installed here
+annovar/annotate_variation.pl -buildver hg38 -downdb -webfrom annovar cosmic70 humandb/

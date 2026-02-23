@@ -1,0 +1,52 @@
+#!/bin/bash
+#SBATCH --partition=htc
+#SBATCH --cluster=htc
+#SBATCH --job-name=annovar
+#SBATCH --time=90:00:00
+#SBATCH --output=output/annovar_%A_%a.out
+#SBATCH --error=output/annovar_%A_%a.err  ###with jobID (%A) and elementID (%a) variables 
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=12 # Request that ncpus be allocated per process.
+#SBATCH --mem=38GB
+####SBATCH --array=0-10
+
+
+
+
+
+module load parallel/20220522
+#Annotate variants
+
+
+# Path to ANNOVAR
+ANNOVAR="/ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/05-annotation_annovar/annovar/table_annovar.pl"
+
+# Input directory with VCF files
+INPUT_DIR="/ix1/hasif/Huma/AbukhiranIbrahim_Data/Agilent_CGP_data/05-annotation_annovar/input/haplotypeCaller_germline"
+
+
+# Export ANNOVAR path and output directory 
+export ANNOVAR
+export OUTPUT_DIR
+
+# Function to run ANNOVAR on a single file
+run_annovar() {
+    vcf="$1"
+    sample=$(basename "$vcf" .annotation.ready.snps.vcf)
+
+    $ANNOVAR "$vcf" \
+        -buildver hg38 \
+        humandb/ \
+        -out "output/haplotypeCaller_germline/${sample}_CGP_HC_GV" \
+        -remove \
+        -protocol refGene,exac03,nci60,dbnsfp30a,gnomad_genome,revel,clinvar_20240917,cosmic70 \
+        --operation g,f,f,f,f,f,f,f \
+        --nastring '.' \
+        --thread 12 \
+        -vcfinput
+}
+
+export -f run_annovar
+
+# Run all VCFs in parallel (adjust -j 4 for number of simultaneous jobs)
+ls "$INPUT_DIR"/*.annotation.ready.snps.vcf | parallel -j 1 run_annovar {}
